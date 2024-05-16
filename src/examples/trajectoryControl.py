@@ -6,6 +6,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import rospy
 import numpy as np
 import threading
+import matplotlib.pyplot as plt
+
 
 from Controller.controller import YumiController
 from Controller.control_target import TaskSpaceVelocityControlTarget
@@ -41,8 +43,22 @@ K_F_R = 0.02  # Gain for force error
 K_M_R = 0.4  # Gain for moment error
 
 #NYTT
-thresh_force = 3.0
-thresh_torque = 0.8
+thresh_force = 3.0 #N
+thresh_torque = 0.8 #Nm
+
+FxL = []
+FyL = []
+FzL = []
+MxL = []
+MyL = []
+MzL = []
+
+FxR = []
+FyR = []
+FzR = []
+MxR = []
+MyR = []
+MzR = []
 
 class TrajectoryController(YumiController):
     """Class for running trajectory control, trajectory parameters are sent with ros and
@@ -66,7 +82,7 @@ class TrajectoryController(YumiController):
         rospy.Subscriber("/ftsensor_l/world_tip_force", WrenchStamped, self.callback_ext_force_l, queue_size=3, tcp_nodelay=True)
 
         #NyttOss
-        self.pub = rospy.Publisher('/objectpos', Trajectory_point, queue_size=1, tcp_nodelay=True)
+        #self.pub = rospy.Publisher('/objectpos', Trajectory_point, queue_size=1, tcp_nodelay=True)
 
     def callback_system_state(self, data):
         auto_mode = data.auto_mode
@@ -93,6 +109,12 @@ class TrajectoryController(YumiController):
         mz = data.wrench.torque.z
         self.wrenches[0:3] = np.array([fx, fy, fz])
         self.wrenches[3:6] = np.array([mx, my, mz])
+        FxR.append(fx)
+        FyR.append(fy)
+        FzR.append(fz)
+        MxR.append(mx)
+        MyR.append(my)
+        MzR.append(mz)
 
     #NYTT Left Hand
     def callback_ext_force_l(self, data):
@@ -104,8 +126,14 @@ class TrajectoryController(YumiController):
         mz = data.wrench.torque.z
         self.wrenches[6:9] = np.array([fx, fy, fz])
         self.wrenches[9:12] = np.array([mx, my, mz])
+        FxL.append(fx)
+        FyL.append(fy)
+        FzL.append(fz)
+        MxL.append(mx)
+        MyL.append(my)
+        MzL.append(mz)
     
-    #NYTT
+    #NYTTUseless
     @staticmethod
     def smooth_start(force, thresh):
         n = np.linalg.norm(force)
@@ -117,6 +145,48 @@ class TrajectoryController(YumiController):
             f = n
         return f * (force / n)
 
+    #NyttOss
+    def plot():
+        time = range(0,len(FxL),1)
+        fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+        # Forces on left arm
+        axs[0, 0].plot(time, FxL, label='FxL')
+        axs[0, 0].plot(time, FyL, label='FyL')
+        axs[0, 0].plot(time, FzL, label='FzL')
+        axs[0, 0].set_title('Forces on Left Arm')
+        axs[0, 0].set_xlabel('Time')
+        axs[0, 0].set_ylabel('Force')
+        axs[0, 0].legend()
+
+        # Forces on right arm
+        axs[0, 1].plot(time, FxR, label='FxR')
+        axs[0, 1].plot(time, FyR, label='FyR')
+        axs[0, 1].plot(time, FzR, label='FzR')
+        axs[0, 1].set_title('Forces on Right Arm')
+        axs[0, 1].set_xlabel('Time')
+        axs[0, 1].set_ylabel('Force')
+        axs[0, 1].legend()
+
+        # Moments on left arm
+        axs[1, 0].plot(time, MxL, label='MxL')
+        axs[1, 0].plot(time, MyL, label='MyL')
+        axs[1, 0].plot(time, MzL, label='MzL')
+        axs[1, 0].set_title('Moments on Left Arm')
+        axs[1, 0].set_xlabel('Time')
+        axs[1, 0].set_ylabel('Moment')
+        axs[1, 0].legend()
+
+        # Moments on right arm
+        axs[1, 1].plot(time, MxR, label='MxR')
+        axs[1, 1].plot(time, MyR, label='MyR')
+        axs[1, 1].plot(time, MzR, label='MzR')
+        axs[1, 1].set_title('Moments on Right Arm')
+        axs[1, 1].set_xlabel('Time')
+        axs[1, 1].set_ylabel('Moment')
+        axs[1, 1].legend()
+
+        plt.tight_layout()
+        plt.show()
 
 
     #NyttOss (Ha ifsats innan calculate...)
@@ -180,29 +250,29 @@ class TrajectoryController(YumiController):
             # pos_R, rot_R, pos_L, rot_L
             action['cartesianVelocity'] = self.control_target.getIndividualTargetVelocity(k_p=K_P_I, k_o=K_O_I)            
            
-            #NYTT
+            #NYTT Useless
             # wrench compensation
-            K_F = np.array([K_F_I, K_F_I, K_F_I])
-            K_M = np.array([K_M_I, K_M_I, K_M_I])
-            # right arm
-            action['cartesianVelocity'][0:3] -= K_F * (self.smooth_start(self.wrenches[0:3], thresh_force))
-            action['cartesianVelocity'][3:6] -= K_M * self.smooth_start(self.wrenches[3:6], thresh_torque)
-            # left arm
-            action['cartesianVelocity'][6:9] -= K_F * (self.smooth_start(self.wrenches[6:9], thresh_force))
-            action['cartesianVelocity'][9:12] -= K_M * self.smooth_start(self.wrenches[9:12], thresh_torque)
+            # K_F = np.array([K_F_I, K_F_I, K_F_I])
+            # K_M = np.array([K_M_I, K_M_I, K_M_I])
+            # # right arm
+            # action['cartesianVelocity'][0:3] -= K_F * (self.smooth_start(self.wrenches[0:3], thresh_force))
+            # action['cartesianVelocity'][3:6] -= K_M * self.smooth_start(self.wrenches[3:6], thresh_torque)
+            # # left arm
+            # action['cartesianVelocity'][6:9] -= K_F * (self.smooth_start(self.wrenches[6:9], thresh_force))
+            # action['cartesianVelocity'][9:12] -= K_M * self.smooth_start(self.wrenches[9:12], thresh_torque)
 
         elif self.control_target.mode == 'coordinated':
             # pos_abs, rot_abs, pos_abs, rot_abs
             action['absoluteVelocity'] = self.control_target.getAbsoluteTargetVelocity(k_p=K_P_A, k_o=K_O_A)
             action['relativeVelocity'] = self.control_target.getRelativeTargetVelocity(k_p=K_P_R, k_o=K_O_R)
             
-            #NYTT
-            # wrench absolute
-            K_F = np.array([K_F_A, K_F_A, K_F_A])
-            K_M = np.array([K_M_A, K_M_A, K_M_A])
-            wrench_abs = self.wrenches[0:6] + self.wrenches[6:12]
-            action['absoluteVelocity'][0:3] -= K_F * self.smooth_start(wrench_abs[0:3], thresh_force)
-            action['absoluteVelocity'][3:6] -= K_M * self.smooth_start(wrench_abs[3:6], thresh_torque)
+            #NYTT Useless
+            # # wrench absolute
+            # K_F = np.array([K_F_A, K_F_A, K_F_A])
+            # K_M = np.array([K_M_A, K_M_A, K_M_A])
+            # wrench_abs = self.wrenches[0:6] + self.wrenches[6:12]
+            # action['absoluteVelocity'][0:3] -= K_F * self.smooth_start(wrench_abs[0:3], thresh_force)
+            # action['absoluteVelocity'][3:6] -= K_M * self.smooth_start(wrench_abs[3:6], thresh_torque)
             # # wrench relative
             # K_F = np.array([K_F_R, K_F_R, K_F_R])
             # K_M = np.array([K_M_R, K_M_R, K_M_R])

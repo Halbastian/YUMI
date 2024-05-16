@@ -227,6 +227,7 @@ class TrajectoryController(YumiController):
         self.control_target.updatePose(self.yumiGripPoseR, self.yumiGripPoseL)
         # resets yumi to init pose
         if self.reset:
+            self.plot()
             self.reset = self.resetPose()
             if self.reset == False:
                 self.control_target = TaskSpaceVelocityControlTarget(Parameters.dT)

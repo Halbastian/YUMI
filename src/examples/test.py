@@ -3,13 +3,13 @@ import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 
-def smooth_start(force, thresh):
-    n = np.linalg.norm(force)
-    if n < thresh:
-        f = (-1/thresh**2)*(n**3) + (2/thresh)*(n**2)
-    else:
-        f = n
-    return f * (force / n)
+# def smooth_start(force, thresh):
+#     n = np.linalg.norm(force)
+#     if n < thresh:
+#         f = (-1/thresh**2)*(n**3) + (2/thresh)*(n**2)
+#     else:
+#         f = n
+#     return f * (force / n)
 
 
 # x = np.linspace(0, 2, 100)

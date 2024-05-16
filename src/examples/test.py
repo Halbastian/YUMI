@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 #         f = n
 #     return f * (force / n)
 
+#FGGDSGSG
 
 # x = np.linspace(0, 2, 100)
 # y = np.zeros_like(x)
